@@ -256,8 +256,11 @@ public class app {
                     for (int i = 0; i <table.getRowCount() ; i++) {
                         String adresPdf=(String) model.getValueAt(i,1);
                         File plik=new File(adresPdf.substring(0,adresPdf.length()-4).concat("Wynik.pdf"));
+
                         if (plik.exists()){
-                        plik.delete();}
+
+                            plik.delete();}
+
                     }
                 }
             }
@@ -338,15 +341,19 @@ public class app {
                for (int i = 0; i <table.getRowCount() ; i++) {
                     if(link.equals(model.getValueAt(i,1))){
                         JOptionPane.showMessageDialog(null,"Plik o tej nazwie już na liście");
+                        pdfReader.close();
                         return false;
                     }
                }
+               pdfReader.close();
                return true;
            }
+            pdfReader.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
         JOptionPane.showMessageDialog(null,"Plik chroniony");
+
         return false;
 
     }

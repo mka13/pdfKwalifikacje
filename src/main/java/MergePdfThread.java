@@ -51,6 +51,7 @@ public class MergePdfThread implements Runnable {
         progressBar.setBackground(Color.BLACK);
         progressBar.setForeground(Color.GREEN);
         frame.setVisible(true);
+        PdfReader pdfReader=null;
         for (int i = 0; i <table.getRowCount() ; i++) {
             String linkOryginalny=(String) this.model.getValueAt(i,1);
             String linkDocelowy=linkOryginalny.substring(0,linkOryginalny.length()-4).concat("Wynik.pdf");
@@ -59,7 +60,7 @@ public class MergePdfThread implements Runnable {
                 if((boolean) model.getValueAt(i,10)){
                     linkDocelowy=linkOryginalny;
                 }
-                PdfReader pdfReader=new PdfReader(linkDocelowy);
+                pdfReader=new PdfReader(linkDocelowy);
                 for (int j = 1; j <=pdfReader.getNumberOfPages() ; j++) {
                     copy.addPage(copy.getImportedPage(pdfReader,j));
 
@@ -72,6 +73,8 @@ public class MergePdfThread implements Runnable {
                     }
                 }
 
+                pdfReader.close();
+
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (BadPdfFormatException e) {
@@ -81,8 +84,9 @@ public class MergePdfThread implements Runnable {
 
         }
         frame.dispose();
-        document.close();
         copy.close();
+        document.close();
+
 
 
 
