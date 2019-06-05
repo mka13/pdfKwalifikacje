@@ -1,8 +1,11 @@
 
+import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.pdf.PdfReader;
 
 import javax.swing.*;
 
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.plaf.basic.BasicArrowButton;
 
 import javax.swing.table.DefaultTableModel;
@@ -12,21 +15,24 @@ import java.awt.*;
 import java.awt.Image;
 import java.awt.event.*;
 import java.io.*;
+import java.util.*;
+import java.util.List;
 
 
 public class app {
-
+    static Map<String,plikPdf>pliki;
     public static void main(String[] args) throws IOException {
         final JFrame frame=new JFrame();
-        String [] values ={"Czarny","Szary","Czerwony","Niebieski"};
+        final String [] values ={"Czarny","Szary","Czerwony","Niebieski"};
 
         final JTable table=new JTable();
 
 
         frame.setLayout(null);
-
+        pliki=new HashMap<>();
         JButton button4=new JButton();
         JButton button3=new JButton();
+        final JTextArea textArea=new JTextArea();
         BasicArrowButton button2=new BasicArrowButton(BasicArrowButton.SOUTH);
         BasicArrowButton button1=new BasicArrowButton(BasicArrowButton.NORTH);
         ImageIcon imageIcon= new ImageIcon(app.class.getResource("folder.png"));
@@ -113,7 +119,7 @@ public class app {
                     case 6:
                         return Integer.class;
                     case  7:
-                        return String.class;
+                        return Color.class;
                     case 8:
                         return Integer.class;
                     case 9:
@@ -165,7 +171,9 @@ public class app {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if(table.getSelectedRow()!=-1){
+                    pliki.remove(model.getValueAt(table.getSelectedRow(),1));
                     model.removeRow(table.getSelectedRow());
+                    textArea.setText("");
 
                 }
             }
@@ -200,7 +208,7 @@ public class app {
                 model.setValueAt(12,table.getRowCount()-1,8);
                 model.setValueAt(1.0,model.getRowCount()-1,9);
                 model.setValueAt(false,table.getRowCount()-1,10);
-
+                model.setValueAt(values[0],table.getRowCount()-1,7);
 
 
             }
@@ -272,6 +280,10 @@ public class app {
         pane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         pane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         pane.setBounds(50,50,900,250);
+
+
+        textArea.setBounds(50,300,900,100);
+        frame.add(textArea);
         frame.add(pane);
         model.addColumn("Numerowanie");
         model.addColumn("Pdf");
@@ -299,6 +311,19 @@ public class app {
         table.getColumnModel().getColumn(7).setCellRenderer(new ComboBoxERenderer(values));
         table.setRowHeight(22);
 
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                String text;
+                text="Ilość stron: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).iloscStron + '\n';
+                text=text + "Maksymalna wysokość: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).y + '\n';
+                text= text + "Maksymalna szerokość: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).x + '\n';
+                text= text + "Maksymalna wysokość (landscape): " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).y_landscape + '\n';
+                text= text + "Maksymalna szerokość (landscape): " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).x_landscape + '\n';
+
+                textArea.setText(text);
+            }
+        });
         button8.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -345,6 +370,58 @@ public class app {
                         return false;
                     }
                }
+
+               int iloscStron;
+               iloscStron=pdfReader.getNumberOfPages();
+               List<Float> wysokosc=new ArrayList();
+               List<Float> szerokosc=new ArrayList();
+               List<Float> wysokosc_landscape=new ArrayList();
+               List<Float> szerokosc_landscape=new ArrayList();
+
+
+               for (int i = 1; i <iloscStron ; i++) {
+
+                   if(pdfReader.getPageSize(i).getHeight()>pdfReader.getPageSize(i).getWidth()){
+                   szerokosc.add(pdfReader.getPageSize(i).getWidth());
+                  wysokosc.add(pdfReader.getPageSize(i).getHeight());}else{
+
+                      wysokosc_landscape.add(pdfReader.getPageSize(i).getHeight());
+                      szerokosc_landscape.add(pdfReader.getPageSize(i).getWidth());}
+
+
+               }
+                float x;
+               float y;
+               float x_landscape;
+               float y_landscape;
+               if(wysokosc.isEmpty()){
+                   y=0;
+               }else {
+                   y=Collections.max(wysokosc);
+               }
+
+               if(szerokosc.isEmpty()){
+                   x=0;
+               }else {
+                   x=Collections.max(szerokosc);
+               }
+
+               if(wysokosc_landscape.isEmpty()){
+                   y_landscape=0;
+               }else {
+                   y_landscape=Collections.max(wysokosc_landscape);
+               }
+
+               if(szerokosc_landscape.isEmpty()){
+                   x_landscape=0;
+               }else {
+                   x_landscape=Collections.max(szerokosc_landscape);
+               }
+
+
+               plikPdf pdf=new plikPdf(y,x,x_landscape,y_landscape,iloscStron,false);
+               pliki.put(link,pdf);
+               //plikPdf pdf= new plikPdf()
                pdfReader.close();
                return true;
            }
@@ -379,10 +456,45 @@ static class ComboBoxERenderer extends JComboBox implements TableCellRenderer{
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
 
         if(isSelected){
-            setForeground(table.getSelectionForeground());
+
+            switch ((String) value){
+                case "Czarny":
+                    setForeground(Color.BLACK);
+                    break;
+                case "Szary":
+                    setForeground(Color.GRAY);
+                    break;
+                case "Czerwony":
+                    setForeground(Color.RED);
+                    break;
+                case "Niebieski":
+                    setForeground(Color.BLUE);
+                    break;
+                    default:
+                        setForeground(Color.BLACK);
+
+            }
+
+
             super.setBackground(table.getSelectionBackground());
         }else {
-            setForeground(table.getForeground());
+            switch ((String) value){
+                case "Czarny":
+                    setForeground(Color.BLACK);
+                    break;
+                case "Szary":
+                    setForeground(Color.GRAY);
+                    break;
+                case "Czerwony":
+                    setForeground(Color.RED);
+                    break;
+                case "Niebieski":
+                    setForeground(Color.BLUE);
+                    break;
+                default:
+                    setForeground(Color.BLACK);
+
+            }
             setBackground(table.getBackground());
 
         }
