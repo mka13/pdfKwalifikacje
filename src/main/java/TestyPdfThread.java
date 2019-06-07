@@ -37,6 +37,8 @@ public class TestyPdfThread implements Runnable {
         progressBar.setBackground(Color.BLACK);
         progressBar.setForeground(Color.GREEN);
         frame.setVisible(true);
+
+
         for (int i = 0; i <table.getRowCount() ; i++) {
             if(!walidacja(table,i,model)){
                 JOptionPane.showMessageDialog(null,"Za mało danych");
@@ -44,6 +46,7 @@ public class TestyPdfThread implements Runnable {
             }
 
             try {
+
                 String linkOryginalny=(String) this.model.getValueAt(i,1);
                 String linkDocelowy=linkOryginalny.substring(0,linkOryginalny.length()-4).concat("Wynik.pdf");
                 Integer wielkoscCzionki= (Integer)this.model.getValueAt(i,8);
@@ -53,9 +56,10 @@ public class TestyPdfThread implements Runnable {
                 Integer y_landscape = (Integer) model.getValueAt(i,6);
                 BaseColor kolor=ustawienieKoloruCzcionki((String) model.getValueAt(i,7));
                 BaseFont baseFont=BaseFont.createFont(BaseFont.TIMES_ROMAN,BaseFont.CP1250,BaseFont.EMBEDDED);
-                String transparentnosc = String.valueOf( (Double) model.getValueAt(i,9));
+               String transparentnosc = String.valueOf( (Double) model.getValueAt(i,9));
                 transparentnosc=transparentnosc.concat("f");
                 String text=(String)model.getValueAt(i,2);
+
                 com.itextpdf.text.Font font=new com.itextpdf.text.Font(baseFont,wielkoscCzionki,Font.NORMAL,kolor);
                 Phrase znakWodny = null;
                 PdfReader pdfReader=new PdfReader(linkOryginalny);
@@ -69,16 +73,21 @@ public class TestyPdfThread implements Runnable {
                 }
 
 
+
                 for (int j = 1; j <= pdfReader.getNumberOfPages(); j++) {
+
+
+
                     if((boolean)model.getValueAt(i,0)){
                         znakWodny=new Phrase(text + " str. "+ j,font);}
                     else{
                         znakWodny=new Phrase(text ,font);
                     }
 
-                    Float szerokosc=pdfStamper.getImportedPage(pdfReader, j).getWidth();
-                    Float wysokosc=pdfStamper.getImportedPage(pdfReader, j).getHeight();
-                    Integer rotacja=pdfReader.getPageRotation(j);
+
+                  Float szerokosc=  pdfReader.getPageSize(j).getWidth();
+                    Float wysokosc = pdfReader.getPageSize(j).getHeight();
+                    Integer rotacja = pdfReader.getPageRotation(j);
 
 
                     PdfContentByte overContent = pdfStamper.getOverContent(j);
@@ -91,7 +100,7 @@ public class TestyPdfThread implements Runnable {
                     if ((szerokosc>wysokosc || rotacja==90 ) && x_landScape !=0 && y_landscape!=0) {
                         ColumnText.showTextAligned(overContent, Element.ALIGN_LEFT,znakWodny,x_landScape,y_landscape,0);
                     }else{
-                        ColumnText.showTextAligned(overContent, Element.ALIGN_LEFT,znakWodny,x,y,0);
+                       ColumnText.showTextAligned(overContent, Element.ALIGN_LEFT,znakWodny,x,y,0);
                     }
 
                     overContent.restoreState();

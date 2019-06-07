@@ -55,19 +55,32 @@ public class MergePdfThread implements Runnable {
         for (int i = 0; i <table.getRowCount() ; i++) {
             String linkOryginalny=(String) this.model.getValueAt(i,1);
             String linkDocelowy=linkOryginalny.substring(0,linkOryginalny.length()-4).concat("Wynik.pdf");
-
+            Integer minStrona;
+            Integer maxStrona;
             try {
                 if((boolean) model.getValueAt(i,10)){
                     linkDocelowy=linkOryginalny;
                 }
                 pdfReader=new PdfReader(linkDocelowy);
-                for (int j = 1; j <=pdfReader.getNumberOfPages() ; j++) {
+                if( model.getValueAt(i,11)!=null && (Integer) model.getValueAt(i,11)!=0 && (Integer) model.getValueAt(i,11)<=pdfReader.getNumberOfPages() ){
+                    minStrona= (Integer) model.getValueAt(i,11);
+                }else{
+                    minStrona=1;
+                }
+                if(model.getValueAt(i,12)!=null && (Integer) model.getValueAt(i,12)!=0 && (Integer) model.getValueAt(i,12)<pdfReader.getNumberOfPages() ){
+                    maxStrona=(Integer) model.getValueAt(i,12);
+                }else{
+                    maxStrona=pdfReader.getNumberOfPages();
+                }
+
+
+                for (int j = minStrona; j <=maxStrona ; j++) {
                     copy.addPage(copy.getImportedPage(pdfReader,j));
 
                     try {
                         Thread.sleep(5);
 
-                        progressBar.setValue(100*j/pdfReader.getNumberOfPages()+i*100);
+                        progressBar.setValue(100*j/maxStrona+i*100);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }

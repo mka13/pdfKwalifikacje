@@ -1,6 +1,9 @@
 
 import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.*;
 
 import javax.swing.*;
 
@@ -33,6 +36,8 @@ public class app {
         JButton button4=new JButton();
         JButton button3=new JButton();
         final JTextArea textArea=new JTextArea();
+        JScrollPane pane2=new JScrollPane();
+
         BasicArrowButton button2=new BasicArrowButton(BasicArrowButton.SOUTH);
         BasicArrowButton button1=new BasicArrowButton(BasicArrowButton.NORTH);
         ImageIcon imageIcon= new ImageIcon(app.class.getResource("folder.png"));
@@ -126,6 +131,10 @@ public class app {
                         return Double.class;
                     case 10:
                         return Boolean.class;
+                    case 11:
+                        return Integer.class;
+                    case 12:
+                        return Integer.class;
 
                     default:
                         return String.class;
@@ -209,6 +218,9 @@ public class app {
                 model.setValueAt(1.0,model.getRowCount()-1,9);
                 model.setValueAt(false,table.getRowCount()-1,10);
                 model.setValueAt(values[0],table.getRowCount()-1,7);
+                model.setValueAt(1,table.getRowCount()-1,11);
+                Integer maxStrona=pliki.get(nazwaPliku).iloscStron;
+                model.setValueAt(maxStrona,table.getRowCount()-1,12);
 
 
             }
@@ -216,6 +228,7 @@ public class app {
         button5.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
+
 
 
 
@@ -282,7 +295,10 @@ public class app {
         pane.setBounds(50,50,900,250);
 
 
-        textArea.setBounds(50,300,900,100);
+        textArea.setBounds(50,300,900,250);
+        pane2.setBounds(50,300,900,250);
+        pane2.setViewportView(textArea);
+        frame.add(pane2);
         frame.add(textArea);
         frame.add(pane);
         model.addColumn("Numerowanie");
@@ -296,6 +312,8 @@ public class app {
         model.addColumn("Wielkosc Czionki");
         model.addColumn("Transparentnosc");
         model.addColumn("Bez znaku wodnego");
+        model.addColumn("Str min");
+        model.addColumn("Str max");
         table.getColumnModel().getColumn(0).setPreferredWidth(100);
         table.getColumnModel().getColumn(1).setPreferredWidth(250);
         table.getColumnModel().getColumn(2).setPreferredWidth(350);
@@ -316,10 +334,12 @@ public class app {
             public void mouseClicked(MouseEvent e) {
                 String text;
                 text="Ilość stron: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).iloscStron + '\n';
-                text=text + "Maksymalna wysokość: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).y + '\n';
-                text= text + "Maksymalna szerokość: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).x + '\n';
-                text= text + "Maksymalna wysokość (landscape): " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).y_landscape + '\n';
-                text= text + "Maksymalna szerokość (landscape): " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).x_landscape + '\n';
+                text=text + "Znalezione formaty: " + '\n';
+                for (String x: pliki.get(model.getValueAt(table.getSelectedRow(), 1)).getFormaty()
+                     ) {
+                        text=text + x + '\n';
+
+                }
 
                 textArea.setText(text);
             }
@@ -328,7 +348,7 @@ public class app {
             @Override
             public void mouseClicked(MouseEvent e) {
 
-                if(table.getRowCount()>1){
+                if(table.getRowCount()>0){
                     FileDialog fileDialog=new FileDialog(frame,"Zapisz plik");
                     fileDialog.setMode(FileDialog.SAVE);
                     fileDialog.setVisible(true);
@@ -373,53 +393,14 @@ public class app {
 
                int iloscStron;
                iloscStron=pdfReader.getNumberOfPages();
-               List<Float> wysokosc=new ArrayList();
-               List<Float> szerokosc=new ArrayList();
-               List<Float> wysokosc_landscape=new ArrayList();
-               List<Float> szerokosc_landscape=new ArrayList();
-
-
-               for (int i = 1; i <iloscStron ; i++) {
-
-                   if(pdfReader.getPageSize(i).getHeight()>pdfReader.getPageSize(i).getWidth()){
-                   szerokosc.add(pdfReader.getPageSize(i).getWidth());
-                  wysokosc.add(pdfReader.getPageSize(i).getHeight());}else{
-
-                      wysokosc_landscape.add(pdfReader.getPageSize(i).getHeight());
-                      szerokosc_landscape.add(pdfReader.getPageSize(i).getWidth());}
-
-
-               }
-                float x;
-               float y;
-               float x_landscape;
-               float y_landscape;
-               if(wysokosc.isEmpty()){
-                   y=0;
-               }else {
-                   y=Collections.max(wysokosc);
+                Set<String>formaty=new HashSet<>();
+                String format;
+               for (int i = 1; i <=iloscStron ; i++) {
+                    format= String.valueOf(pdfReader.getPageSize(i));
+                    formaty.add(format);
                }
 
-               if(szerokosc.isEmpty()){
-                   x=0;
-               }else {
-                   x=Collections.max(szerokosc);
-               }
-
-               if(wysokosc_landscape.isEmpty()){
-                   y_landscape=0;
-               }else {
-                   y_landscape=Collections.max(wysokosc_landscape);
-               }
-
-               if(szerokosc_landscape.isEmpty()){
-                   x_landscape=0;
-               }else {
-                   x_landscape=Collections.max(szerokosc_landscape);
-               }
-
-
-               plikPdf pdf=new plikPdf(y,x,x_landscape,y_landscape,iloscStron,false);
+               plikPdf pdf=new plikPdf(formaty,iloscStron);
                pliki.put(link,pdf);
                //plikPdf pdf= new plikPdf()
                pdfReader.close();
