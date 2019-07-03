@@ -7,6 +7,8 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 
 public class TestyPdfThread implements Runnable {
 
@@ -14,11 +16,14 @@ public class TestyPdfThread implements Runnable {
 
     JTable table;
     DefaultTableModel model;
+    Map<String,plikPdf>listaPlikow;
 
-    public TestyPdfThread(JTable table, DefaultTableModel model) {
+
+    public TestyPdfThread(JTable table, DefaultTableModel model,Map<String,plikPdf>listaPlikow) {
         this.thread =new Thread(this,"pdf");
         this.table=table;
         this.model=model;
+        this.listaPlikow=listaPlikow;
         thread.start();
 
     }
@@ -40,25 +45,26 @@ public class TestyPdfThread implements Runnable {
 
 
         for (int i = 0; i <table.getRowCount() ; i++) {
+            if((boolean)(model.getValueAt(i,1))){
             if(!walidacja(table,i,model)){
                 JOptionPane.showMessageDialog(null,"Za mało danych");
                 break;
             }
 
+
             try {
 
-                String linkOryginalny=(String) this.model.getValueAt(i,1);
+                String linkOryginalny=(String) this.model.getValueAt(i,3);
+                plikPdf plikPdf = listaPlikow.get(linkOryginalny);
+                Set<Format> formaty = plikPdf.getFormaty();
                 String linkDocelowy=linkOryginalny.substring(0,linkOryginalny.length()-4).concat("Wynik.pdf");
-                Integer wielkoscCzionki= (Integer)this.model.getValueAt(i,8);
-                Integer x=(Integer) model.getValueAt(i,3);
-                Integer y= (Integer) model.getValueAt(i,4);
-                Integer x_landScape= (Integer) model.getValueAt(i,5);
-                Integer y_landscape = (Integer) model.getValueAt(i,6);
-                BaseColor kolor=ustawienieKoloruCzcionki((String) model.getValueAt(i,7));
+                Integer wielkoscCzionki= (Integer)this.model.getValueAt(i,6);
+
+                BaseColor kolor=ustawienieKoloruCzcionki((String) model.getValueAt(i,5));
                 BaseFont baseFont=BaseFont.createFont(BaseFont.TIMES_ROMAN,BaseFont.CP1250,BaseFont.EMBEDDED);
-               String transparentnosc = String.valueOf( (Double) model.getValueAt(i,9));
+               String transparentnosc = String.valueOf( (Double) model.getValueAt(i,7));
                 transparentnosc=transparentnosc.concat("f");
-                String text=(String)model.getValueAt(i,2);
+                String text=(String)model.getValueAt(i,4);
 
                 com.itextpdf.text.Font font=new com.itextpdf.text.Font(baseFont,wielkoscCzionki,Font.NORMAL,kolor);
                 Phrase znakWodny = null;
@@ -85,9 +91,9 @@ public class TestyPdfThread implements Runnable {
                     }
 
 
-                  Float szerokosc=  pdfReader.getPageSize(j).getWidth();
-                    Float wysokosc = pdfReader.getPageSize(j).getHeight();
-                    Integer rotacja = pdfReader.getPageRotation(j);
+                    String format = String.valueOf(pdfReader.getPageSize(j));
+                    Format format1 = plikPdf.znajdzFormat(format);
+
 
 
                     PdfContentByte overContent = pdfStamper.getOverContent(j);
@@ -97,11 +103,9 @@ public class TestyPdfThread implements Runnable {
                     ustawienieWizualneStronyPdf.setFillOpacity(Float.valueOf(transparentnosc));
                     overContent.setGState(ustawienieWizualneStronyPdf);
 
-                    if ((szerokosc>wysokosc || rotacja==90 ) && x_landScape !=0 && y_landscape!=0) {
-                        ColumnText.showTextAligned(overContent, Element.ALIGN_LEFT,znakWodny,x_landScape,y_landscape,0);
-                    }else{
-                       ColumnText.showTextAligned(overContent, Element.ALIGN_LEFT,znakWodny,x,y,0);
-                    }
+
+                    ColumnText.showTextAligned(overContent, Element.ALIGN_LEFT,znakWodny,format1.getX(),format1.getY(),0);
+
 
                     overContent.restoreState();
                     try {
@@ -122,7 +126,7 @@ public class TestyPdfThread implements Runnable {
             }
 
 
-        }
+        }}
         frame.dispose();
 
 

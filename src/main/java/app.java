@@ -3,12 +3,15 @@ import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
 import com.itextpdf.text.Phrase;
+import com.itextpdf.text.exceptions.InvalidPdfException;
 import com.itextpdf.text.pdf.*;
 
 import javax.swing.*;
 
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import javax.swing.plaf.basic.BasicArrowButton;
 
 import javax.swing.table.DefaultTableModel;
@@ -16,6 +19,12 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.Image;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.*;
 import java.io.*;
 import java.util.*;
@@ -35,8 +44,8 @@ public class app {
         pliki=new HashMap<>();
         JButton button4=new JButton();
         JButton button3=new JButton();
-        final JTextArea textArea=new JTextArea();
-        JScrollPane pane2=new JScrollPane();
+        //final JTextArea textArea=new JTextArea();
+        //JScrollPane pane2=new JScrollPane();
 
         BasicArrowButton button2=new BasicArrowButton(BasicArrowButton.SOUTH);
         BasicArrowButton button1=new BasicArrowButton(BasicArrowButton.NORTH);
@@ -111,30 +120,25 @@ public class app {
                 switch (C){
                     case 0:
                         return Boolean.class;
+
                     case 1:
-                        return String.class;
-                    case 2:
-                        return String.class;
-                    case 3:
-                        return Integer.class;
-                    case 4:
-                        return Integer.class;
-                    case 5:
-                        return Integer.class;
-                    case 6:
-                        return Integer.class;
-                    case  7:
-                        return Color.class;
-                    case 8:
-                        return Integer.class;
-                    case 9:
-                        return Double.class;
-                    case 10:
                         return Boolean.class;
-                    case 11:
-                        return Integer.class;
-                    case 12:
-                        return Integer.class;
+                    case 2:
+                        return Boolean.class;
+
+
+                    case 3: return String.class; //pdf sciezka
+
+                    case 4: return String.class; //pdf opis
+
+                    case 5: return Color.class;
+
+                    case 6: return Integer.class;
+                    case 7: return Double.class;
+
+                    case 8: return Integer.class;
+                    case 9: return Integer.class;
+
 
                     default:
                         return String.class;
@@ -144,7 +148,7 @@ public class app {
             @Override
             public boolean isCellEditable(int row, int column) {
                 //return super.isCellEditable(row, column);
-                if(column==1 ){
+                if(column==3 ){
                     return false;}
                 return true;
             }
@@ -182,7 +186,7 @@ public class app {
                 if(table.getSelectedRow()!=-1){
                     pliki.remove(model.getValueAt(table.getSelectedRow(),1));
                     model.removeRow(table.getSelectedRow());
-                    textArea.setText("");
+                    //textArea.setText("");
 
                 }
             }
@@ -195,32 +199,49 @@ public class app {
                 dialog.setFile("*.pdf");
                 dialog.setVisible(true);
                 String nazwaPliku=null;
+
                 try {
                     nazwaPliku=dialog.getDirectory().concat(dialog.getFile());
                 }catch (Exception x){
-                    System.out.println("Błąd zapisu");
                     return;
                 }
-
-                if(!walidacjaPlikuPdf(nazwaPliku,table,model)){
+                PdfReader pdfReader=null;
+                try {
+                     pdfReader=new PdfReader(nazwaPliku);
+                } catch (IOException e1) {
+                   JOptionPane.showMessageDialog(null,"Plik " + nazwaPliku + " jest uszkodzony lub ma niepoprawny format i nie da się go wczytać");
+                return;
+                }
+               nazwaPliku= czyPlikJestChroniony(nazwaPliku,pdfReader);
+                if(nazwaPliku.equals("")){
+                    pdfReader.close();
                     return;
+
                 }
 
+                if(!walidacjaPlikuPdf(nazwaPliku,table,model,pdfReader)){
+                    pdfReader.close();
+                    return;
+                }
+                pdfReader.close();
                 model.addRow(new Object[0]);
-                model.setValueAt(false,table.getRowCount()-1,0);
-                model.setValueAt(nazwaPliku,table.getRowCount()-1,1);
-                model.setValueAt("Załącznik" + table.getRowCount()+ ": ",table.getRowCount()-1,2);
-                model.setValueAt(120,table.getRowCount()-1,3);
-                model.setValueAt(800,table.getRowCount()-1,4);
-                model.setValueAt(100,table.getRowCount()-1,5);
-                model.setValueAt(100,table.getRowCount()-1,6);
-                model.setValueAt(12,table.getRowCount()-1,8);
-                model.setValueAt(1.0,model.getRowCount()-1,9);
-                model.setValueAt(false,table.getRowCount()-1,10);
-                model.setValueAt(values[0],table.getRowCount()-1,7);
-                model.setValueAt(1,table.getRowCount()-1,11);
+                model.setValueAt(true,table.getRowCount()-1,0);
+                model.setValueAt(true,table.getRowCount()-1,1);
+                model.setValueAt(false,table.getRowCount()-1,2);
+
+
+
+
+                model.setValueAt(nazwaPliku,table.getRowCount()-1,3);
+                model.setValueAt("Załącznik" + table.getRowCount()+ ": ",table.getRowCount()-1,4);
+                model.setValueAt(values[0],table.getRowCount()-1,5);
+                model.setValueAt(12,table.getRowCount()-1,6);
+                model.setValueAt(1.0,model.getRowCount()-1,7);
+
+
+                model.setValueAt(1,table.getRowCount()-1,8);
                 Integer maxStrona=pliki.get(nazwaPliku).iloscStron;
-                model.setValueAt(maxStrona,table.getRowCount()-1,12);
+                model.setValueAt(maxStrona,table.getRowCount()-1,9);
 
 
             }
@@ -234,7 +255,7 @@ public class app {
 
 
 
-                TestyPdfThread testyPdfThread=new TestyPdfThread(table,model);
+                TestyPdfThread testyPdfThread=new TestyPdfThread(table,model,pliki);
             }
 
 
@@ -244,11 +265,11 @@ public class app {
             public void mouseClicked(MouseEvent e) {
                 if(table.getSelectedRow()!=-1){
 
-                    File plik= new File( (String) model.getValueAt(table.getSelectedRow(),1));
+                    File plik= new File( (String) model.getValueAt(table.getSelectedRow(),3));
                     try {
                         Desktop.getDesktop().open(plik);
                     } catch (IOException e1) {
-                        System.out.println("Błąd otwarcia");
+
                         return;
                     }
                 }
@@ -259,7 +280,7 @@ public class app {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if(table.getSelectedRow()!=-1){
-                    String adresPdf=(String) model.getValueAt(table.getSelectedRow(),1);
+                    String adresPdf=(String) model.getValueAt(table.getSelectedRow(),3);
                     File plik =new File (adresPdf.substring(0,adresPdf.length()-4).concat("Wynik.pdf"));
                     try {
                         Desktop.getDesktop().open(plik);
@@ -275,7 +296,7 @@ public class app {
             public void mouseClicked(MouseEvent e) {
                 if(table.getRowCount()>0){
                     for (int i = 0; i <table.getRowCount() ; i++) {
-                        String adresPdf=(String) model.getValueAt(i,1);
+                        String adresPdf=(String) model.getValueAt(i,3);
                         File plik=new File(adresPdf.substring(0,adresPdf.length()-4).concat("Wynik.pdf"));
 
                         if (plik.exists()){
@@ -289,61 +310,181 @@ public class app {
 
         table.setModel(model);
         frame.setBounds(250,250,1100,600);
-        JScrollPane pane=new JScrollPane(table);
+        final JScrollPane pane=new JScrollPane(table);
         pane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         pane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         pane.setBounds(50,50,900,250);
+        pane.setDropTarget(new DropTarget(){
+            @Override
+            public synchronized void drop(DropTargetDropEvent dtde) {
+                dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
+                Transferable transferable = dtde.getTransferable();
+                List listaPlikow=null;
+                File plik=null;
+                String nazwaPliku;
+                try {
+                    listaPlikow=(List) transferable.getTransferData(DataFlavor.javaFileListFlavor);
+                    for (int i = 0; i <listaPlikow.size() ; i++) {
+                        plik=(File) listaPlikow.get(i);
+                        nazwaPliku=plik.getPath();
+                        PdfReader pdfReader= null;
+                        try {
+                            pdfReader = new PdfReader(nazwaPliku);
+                        } catch (IOException e) {
+                            JOptionPane.showMessageDialog(null,"Plik " + nazwaPliku + " jest uszkodzony lub ma niepoprawny format i nie da się go otworzyć ");
+                            continue;
+                        }
+                        nazwaPliku= czyPlikJestChroniony(nazwaPliku,pdfReader);
 
 
-        textArea.setBounds(50,300,900,250);
-        pane2.setBounds(50,300,900,250);
-        pane2.setViewportView(textArea);
-        frame.add(pane2);
-        frame.add(textArea);
+                        if (walidacjaPlikuPdf(nazwaPliku,table,model,pdfReader)&&!nazwaPliku.equals("")){
+
+                            model.addRow(new Object[0]);
+                            model.setValueAt(true,table.getRowCount()-1,0);
+                            model.setValueAt(true,table.getRowCount()-1,1);
+                            model.setValueAt(false,table.getRowCount()-1,2);
+
+
+
+
+                            model.setValueAt(nazwaPliku,table.getRowCount()-1,3);
+                            model.setValueAt("Załącznik" + table.getRowCount()+ ": ",table.getRowCount()-1,4);
+                            model.setValueAt(values[0],table.getRowCount()-1,5);
+                            model.setValueAt(12,table.getRowCount()-1,6);
+                            model.setValueAt(1.0,model.getRowCount()-1,7);
+
+
+                            model.setValueAt(1,table.getRowCount()-1,8);
+                            Integer maxStrona=pliki.get(nazwaPliku).iloscStron;
+                            model.setValueAt(maxStrona,table.getRowCount()-1,9);
+
+
+
+
+
+
+                        }
+                        pdfReader.close();
+
+                    }
+                } catch (UnsupportedFlavorException e) {
+                    e.printStackTrace();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        });
+
+//        textArea.setBounds(50,300,900,250);
+        //pane2.setBounds(50,300,900,250);
+        //pane2.setViewportView(textArea);
+        //frame.add(pane2);
+//        frame.add(textArea);
         frame.add(pane);
-        model.addColumn("Numerowanie");
-        model.addColumn("Pdf");
+        model.addColumn("Numerowanie?");
+        model.addColumn("Znak wodny?");
+        model.addColumn("Łącz bez znaku wodnego");
+        model.addColumn("Scieżka");
         model.addColumn("Opis");
-        model.addColumn("x");
-        model.addColumn("y");
-        model.addColumn("xLandscape");
-        model.addColumn("yLandscape");
         model.addColumn("Kolor czcionki");
         model.addColumn("Wielkosc Czionki");
         model.addColumn("Transparentnosc");
-        model.addColumn("Bez znaku wodnego");
         model.addColumn("Str min");
         model.addColumn("Str max");
         table.getColumnModel().getColumn(0).setPreferredWidth(100);
-        table.getColumnModel().getColumn(1).setPreferredWidth(250);
-        table.getColumnModel().getColumn(2).setPreferredWidth(350);
+        table.getColumnModel().getColumn(1).setPreferredWidth(100);
+        table.getColumnModel().getColumn(2).setPreferredWidth(100);
         table.getColumnModel().getColumn(3).setPreferredWidth(100);
-        table.getColumnModel().getColumn(4).setPreferredWidth(100);
+        table.getColumnModel().getColumn(4).setPreferredWidth(300);
         table.getColumnModel().getColumn(5).setPreferredWidth(100);
         table.getColumnModel().getColumn(6).setPreferredWidth(100);
         table.getColumnModel().getColumn(7).setPreferredWidth(100);
         table.getColumnModel().getColumn(8).setPreferredWidth(100);
-        table.getColumnModel().getColumn(9).setPreferredWidth(100);
-        table.getColumnModel().getColumn(10).setPreferredWidth(100);
-        table.getColumnModel().getColumn(7).setCellEditor(new ComboBoxEditor(values));
-        table.getColumnModel().getColumn(7).setCellRenderer(new ComboBoxERenderer(values));
+        table.getColumnModel().getColumn(5).setCellEditor(new ComboBoxEditor(values));
+        table.getColumnModel().getColumn(5).setCellRenderer(new ComboBoxERenderer(values));
         table.setRowHeight(22);
 
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                String text;
-                text="Ilość stron: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).iloscStron + '\n';
-                text=text + "Znalezione formaty: " + '\n';
-                for (String x: pliki.get(model.getValueAt(table.getSelectedRow(), 1)).getFormaty()
+//                String text;
+//                text="Ilość stron: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).iloscStron + '\n';
+//                text=text + "Znalezione formaty: " + '\n';
+//                for (String x: pliki.get(model.getValueAt(table.getSelectedRow(), 1)).getFormaty()
+//                     ) {
+//                        text=text + x + '\n';
+//
+//                }
+//
+//                textArea.setText(text);
+                final JTable table1=new JTable();
+                JScrollPane pane1=new JScrollPane();
+                pane1.setViewportView(table1);
+                pane1.setBounds(50,300,900,250);
+
+                final DefaultTableModel model1=new DefaultTableModel(){
+                    @Override
+                    public Class<?> getColumnClass(int columnIndex) {
+                        switch (columnIndex){
+                            case 0:
+                                return String.class;
+                            case 1:
+                                return Integer.class;
+                            case 2:
+                                return Integer.class;
+                            case 3:
+                                return Integer.class;
+                                default:
+                                    return String.class;
+                        }
+                    }
+
+                    @Override
+                    public boolean isCellEditable(int row, int column) {
+                        if(column==2 || column==3){
+                            return true;
+                        }
+                        return false;
+                    }
+                };
+                table1.setModel(model1);
+                model1.addColumn("Formaty");
+                model1.addColumn("Rotacja");
+                model1.addColumn("x");
+                model1.addColumn("y");
+                frame.add(pane1);
+                for (Format x:pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()
                      ) {
-                        text=text + x + '\n';
+                    model1.addRow(new Object[0]);
+                    model1.setValueAt(x.getOpis(),table1.getRowCount()-1,0);
+                    model1.setValueAt(x.getRotacja(),table1.getRowCount()-1,1);
+                    model1.setValueAt(x.getX(),table1.getRowCount()-1,2);
+                    model1.setValueAt(x.getY(),table1.getRowCount()-1,3);
+                }
+            table1.getModel().addTableModelListener(new TableModelListener() {
+                @Override
+                public void tableChanged(TableModelEvent e) {
+
+
+                        for (Format x: pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()
+                             ) {
+                            if(x.getOpis().equals(model1.getValueAt(table1.getSelectedRow(),0))){
+                                x.setX((Integer) model1.getValueAt(table1.getSelectedRow(),2));
+                                x.setY((Integer) model1.getValueAt(table1.getSelectedRow(),3));
+                                System.out.println("zmiana");
+
+                        }
+                    }
 
                 }
-
-                textArea.setText(text);
+            });
             }
-        });
+
+        }
+
+        );
         button8.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -379,40 +520,78 @@ public class app {
 
     }
 
-    private static boolean walidacjaPlikuPdf(String link,JTable table,DefaultTableModel model) {
-        try {
-            PdfReader pdfReader = new PdfReader(link);
-           if(!pdfReader.isEncrypted()){
+    private static String czyPlikJestChroniony(String link,PdfReader pdfReader){
+        String bufor;
+        if(pdfReader.isEncrypted()){
+
+            int odp = JOptionPane.showConfirmDialog(null, "Plik chroniony. Odblokować?","Plik chroniony", JOptionPane.YES_NO_OPTION);
+            if(odp==JOptionPane.YES_OPTION){
+                PdfReader.unethicalreading=true;
+
+                try {
+
+                    PdfStamper stamper = new PdfStamper(pdfReader,new FileOutputStream(link.substring(0,link.length()-4).concat("_odblokowany.pdf")));
+
+                    bufor=link.substring(0,link.length()-4).concat("_odblokowany.pdf");
+                    stamper.close();
+                    return bufor;
+                } catch (DocumentException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }else{
+
+                return "";
+            }
+
+        }
+
+        return link;
+
+
+
+    }
+
+
+    private static boolean walidacjaPlikuPdf(String link,JTable table,DefaultTableModel model,PdfReader pdfReader) {
+
+
+
+
                for (int i = 0; i <table.getRowCount() ; i++) {
-                    if(link.equals(model.getValueAt(i,1))){
+                    if(link.equals(model.getValueAt(i,3))){
                         JOptionPane.showMessageDialog(null,"Plik o tej nazwie już na liście");
-                        pdfReader.close();
+
                         return false;
                     }
                }
 
                int iloscStron;
                iloscStron=pdfReader.getNumberOfPages();
-                Set<String>formaty=new HashSet<>();
-                String format;
+                Set<Format>formaty=new HashSet<>();
+                String opis;
                for (int i = 1; i <=iloscStron ; i++) {
-                    format= String.valueOf(pdfReader.getPageSize(i));
-                    formaty.add(format);
+
+                   Format format=new Format(String.valueOf(pdfReader.getPageSize(i)),pdfReader.getPageRotation(i),(int) pdfReader.getPageSize(i).getWidth()-50,(int) pdfReader.getPageSize(i).getHeight()-20);
+                   formaty.add(format);
+                   //                    format= String.valueOf(pdfReader.getPageSize(i));
+//                    formaty.add(format);
                }
 
                plikPdf pdf=new plikPdf(formaty,iloscStron);
                pliki.put(link,pdf);
                //plikPdf pdf= new plikPdf()
-               pdfReader.close();
-               return true;
-           }
-            pdfReader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        JOptionPane.showMessageDialog(null,"Plik chroniony");
 
-        return false;
+               return true;
+
+
+
+
+
+
+
 
     }
 
