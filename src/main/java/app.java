@@ -14,6 +14,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.plaf.basic.BasicArrowButton;
 
+import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableModel;
 
 import javax.swing.table.TableCellRenderer;
@@ -33,6 +34,8 @@ import java.util.List;
 
 public class app {
     static Map<String,plikPdf>pliki;
+    static JScrollPane pane1;
+    //static DefaultTableModel model1;
     public static void main(String[] args) throws IOException {
         final JFrame frame=new JFrame();
         final String [] values ={"Czarny","Szary","Czerwony","Niebieski"};
@@ -186,6 +189,9 @@ public class app {
                 if(table.getSelectedRow()!=-1){
                     pliki.remove(model.getValueAt(table.getSelectedRow(),1));
                     model.removeRow(table.getSelectedRow());
+                    if (pane1!=null){
+                        pane1.setVisible(false);
+                    }
                     //textArea.setText("");
 
                 }
@@ -382,6 +388,7 @@ public class app {
         //pane2.setViewportView(textArea);
         //frame.add(pane2);
 //        frame.add(textArea);
+
         frame.add(pane);
         model.addColumn("Numerowanie?");
         model.addColumn("Znak wodny?");
@@ -409,6 +416,7 @@ public class app {
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
+                if(table.getRowCount()>0){
 //                String text;
 //                text="Ilość stron: " + pliki.get(model.getValueAt(table.getSelectedRow(), 1)).iloscStron + '\n';
 //                text=text + "Znalezione formaty: " + '\n';
@@ -419,19 +427,60 @@ public class app {
 //                }
 //
 //                textArea.setText(text);
-                final JTable table1=new JTable();
-                JScrollPane pane1=new JScrollPane();
-                pane1.setViewportView(table1);
-                pane1.setBounds(50,300,900,250);
+                final String [] kolumny={"Format","Rotacja","x","y"};
 
-                final DefaultTableModel model1=new DefaultTableModel(){
+
+
+                final AbstractTableModel model1=new AbstractTableModel() {
+                    @Override
+                    public int getRowCount() {
+                      return   pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty().size();
+                    }
+
+                    @Override
+                    public int getColumnCount() {
+
+                        return 4;
+                    }
+
+                    @Override
+                    public Object getValueAt(int rowIndex, int columnIndex) {
+                        int counter=0;
+                        for (Format x:pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()){
+
+                            if(rowIndex==counter){
+                                    switch (columnIndex){
+                                        case 0:
+                                            return x.getOpis();
+
+                                        case 1:
+                                            return x.getRotacja();
+
+                                        case 2:
+                                            return x.getX();
+
+                                        case 3:
+                                            return x.getY();
+
+                                    }
+                                    }
+                        counter++;
+                        }
+                    return null;
+                    }
+
+                    @Override
+                    public String getColumnName(int column) {
+                        return kolumny[column];
+                    }
+
                     @Override
                     public Class<?> getColumnClass(int columnIndex) {
                         switch (columnIndex){
                             case 0:
                                 return String.class;
                             case 1:
-                                return Integer.class;
+                                return Double.class;
                             case 2:
                                 return Integer.class;
                             case 3:
@@ -442,44 +491,113 @@ public class app {
                     }
 
                     @Override
-                    public boolean isCellEditable(int row, int column) {
-                        if(column==2 || column==3){
-                            return true;
+                    public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+                        int counter=0;
+
+                        for (Format x:pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()){
+
+                           if(rowIndex==counter){
+                               if(columnIndex==2){
+                                   x.setX((Integer) aValue);
+                               }else {
+                                   x.setY((Integer)aValue);
+                               }
+                            break;
+                           }
+                counter++;
+
+
                         }
-                        return false;
+                    fireTableCellUpdated(rowIndex,columnIndex);
+                    }
+
+                    @Override
+                    public boolean isCellEditable(int rowIndex, int columnIndex) {
+                        if(columnIndex==2 || columnIndex==3){
+                            return true;
+                        }else {
+                            return false;
+                        }
                     }
                 };
-                table1.setModel(model1);
-                model1.addColumn("Formaty");
-                model1.addColumn("Rotacja");
-                model1.addColumn("x");
-                model1.addColumn("y");
-                frame.add(pane1);
-                for (Format x:pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()
-                     ) {
-                    model1.addRow(new Object[0]);
-                    model1.setValueAt(x.getOpis(),table1.getRowCount()-1,0);
-                    model1.setValueAt(x.getRotacja(),table1.getRowCount()-1,1);
-                    model1.setValueAt(x.getX(),table1.getRowCount()-1,2);
-                    model1.setValueAt(x.getY(),table1.getRowCount()-1,3);
-                }
-            table1.getModel().addTableModelListener(new TableModelListener() {
-                @Override
-                public void tableChanged(TableModelEvent e) {
 
 
-                        for (Format x: pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()
-                             ) {
-                            if(x.getOpis().equals(model1.getValueAt(table1.getSelectedRow(),0))){
-                                x.setX((Integer) model1.getValueAt(table1.getSelectedRow(),2));
-                                x.setY((Integer) model1.getValueAt(table1.getSelectedRow(),3));
-                                System.out.println("zmiana");
 
-                        }
-                    }
+                final JTable table1=new JTable(model1);
 
-                }
-            });
+                 pane1=new JScrollPane();
+
+                pane1.setViewportView(table1);
+                pane1.setBounds(50,300,900,250);
+
+//             final DefaultTableModel  model1=new DefaultTableModel(){
+//                    @Override
+//                    public Class<?> getColumnClass(int columnIndex) {
+//                        switch (columnIndex){
+//                            case 0:
+//                                return String.class;
+//                            case 1:
+//                                return Integer.class;
+//                            case 2:
+//                                return Integer.class;
+//                            case 3:
+//                                return Integer.class;
+//                                default:
+//                                    return String.class;
+//                        }
+//                    }
+//
+//                    @Override
+//                    public boolean isCellEditable(int row, int column) {
+//                        if(column==2 || column==3){
+//                            return true;
+//                        }
+//                        return false;
+//                    }
+//                };
+
+                frame.add(pane1);}
+//                for (Format x:pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()
+//                     ) {
+//
+//                    model1.addRow(new Object[0]);
+//                    model1.setValueAt(x.getOpis(),table1.getRowCount()-1,0);
+////                    System.out.println(x.getX());
+////                    System.out.println(x.getOpis());
+////                    System.out.println(model1.getValueAt(0, 0));
+//                    model1.setValueAt(x.getRotacja(),table1.getRowCount()-1,1);
+//                    model1.setValueAt(x.getX(),table1.getRowCount()-1,2);
+//                    model1.setValueAt(x.getY(),table1.getRowCount()-1,3);
+//                }
+
+
+
+
+
+
+
+//                table1.getModel().addTableModelListener(new TableModelListener() {
+//
+//                public void tableChanged(TableModelEvent e) {
+//
+//                        for (Format x: pliki.get(model.getValueAt(table.getSelectedRow(), 3)).getFormaty()
+//                             ) {
+//
+//                            System.out.println(model1.getValueAt(table1.getSelectedRow(),2));
+//                            System.out.println(model1.getValueAt(table1.getSelectedRow(),3));
+//                            System.out.println(model1.getValueAt(table1.getSelectedRow(),0));
+//                            if(x.getOpis().equals(model1.getValueAt(table1.getSelectedRow(),0))){
+//                                x.setX((Integer) model1.getValueAt(table1.getSelectedRow(),2));
+//                                System.out.println("zmiana");
+//                                System.out.println(model1.getValueAt(table1.getSelectedRow(),2));
+//                                System.out.println(x.getX());
+//                                x.setY((Integer) model1.getValueAt(table1.getSelectedRow(),3));
+//
+//                        }
+//                    }
+//
+//                }
+//            });
             }
 
         }
@@ -581,6 +699,7 @@ public class app {
                }
 
                plikPdf pdf=new plikPdf(formaty,iloscStron);
+
                pliki.put(link,pdf);
                //plikPdf pdf= new plikPdf()
 
